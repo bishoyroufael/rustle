@@ -1,0 +1,31 @@
+[package]
+name = "rustle"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bytes = "1.4.0"
+futures = "0.3.28"
+iced = {version = "0.9.0", features = ["glow", "tokio"]}
+iced_aw = { version = "0.5.0", features = ["floating_element", "spinner", "icons", "quad"] }
+
+reqwest = "0.11.18"
+tokio = { version = "1", features = ["full"] }
+indicatif = "0.15"
+cargo-watch = "8.4.0"
+rand = "0.8"
+actix-web = "4.3.1"
+actix-files = "0.6.2"
+futures-util = "0.3.28"
+url = "2.4.0"
+crossbeam = "0.8.2"
+
+[[bin]]
+name = "rustle"
+path = "src/main.rs"
+
+[[bin]]
+name = "testing_server"
+path = "src/testing_server/server.rs"

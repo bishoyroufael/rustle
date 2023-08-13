@@ -5,6 +5,14 @@ Rustle:  a powerful download manager and accelerator written in Rust.
     <img src="assets/rustle-logo-transparent.png" width="300" height="auto">
 </p>
 
+
+## Preview
+
+<p align="center">
+    <img src="assets/rustle-preview.gif" width="300" height="auto">
+</p>
+
+
 ## Features
 - [x] **Resumable Downloads**: Allow interrupted downloads to be resumed from where they left off, providing users with a seamless experience even after network disruptions.
 - [x] **Download Acceleration**: Utilize various techniques, like parallel connections and intelligent resource allocation, to accelerate downloads. 
@@ -17,3 +25,4 @@ Rustle:  a powerful download manager and accelerator written in Rust.
 
 ### Run
 - Run the project using `cargo run --bin rustle`
+

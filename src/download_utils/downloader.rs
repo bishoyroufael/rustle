@@ -342,23 +342,26 @@ impl RustleDownloader {
         }
 
         let mut buffer = BytesMut::new();
-        let mut start_time = Instant::now();
+        let start_time = Instant::now();
+
+        let mut pause_duration = Duration::new(0,0);
 
         while let Some(chunk) = response.chunk()
                                             .await
                                             .unwrap_or(None) {
 
 
+            
             // Wait if download was paused ..
             match self.get_status().await {
                 DownloadStatus::Paused => {
+                    let pause_time = Instant::now();
                     loop {
                         match self.get_status().await {
                             DownloadStatus::Downloading => {
                                 // println!("Download is resumed, breaking");
 
-                                // re-initialize the start_time for resuming the download
-                                // start_time = Instant::now();
+                                pause_duration += pause_time.elapsed();
                                 break;
                             },
                             _ => {}
@@ -379,8 +382,9 @@ impl RustleDownloader {
             let mut inner = self.inner.lock().await;
             // Add the number of downloaded chunks to track progress
             inner.progress_vec[part_num].downloaded_bytes += chunk.len();
-            // Calculate the downloading speed and save to progress vec
-            let downloading_speed = inner.progress_vec[part_num].downloaded_bytes as f64 / elapsed_time.as_secs_f64(); 
+
+            // Calculate the downloading speed (total pause time is subtracted if present)
+            let downloading_speed = inner.progress_vec[part_num].downloaded_bytes as f64 / (elapsed_time.as_secs_f64() - pause_duration.as_secs_f64()); 
             inner.progress_vec[part_num].download_speed = downloading_speed;
 
 

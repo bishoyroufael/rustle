@@ -239,7 +239,7 @@ impl Application for RustleGUI {
 
             },
             Message::ResumeDownloadButtonPressed(row_i) => {
-                println!("Resume download pressed");
+                // println!("Resume download pressed");
                 let engine = self.downloads[&row_i].engine.clone();
 
                 // Fire up two commands to resume the download / Update the gui progress

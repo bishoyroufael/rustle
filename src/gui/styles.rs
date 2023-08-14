@@ -1,5 +1,30 @@
-use iced::{theme::{self, ProgressBar}, Theme, widget::{button, button::Appearance, progress_bar}, Color};
+use iced::{theme::{self, ProgressBar}, Theme, widget::{button, button::Appearance, progress_bar, container}, Color};
 use iced_aw::style::colors;
+
+
+pub const GREEN_COLOR_MAIN : Color = Color::from_rgb(0.0, 0.749, 0.388);
+pub const BLUE_COLOR_MAIN : Color = Color::from_rgb(0.1, 0.5, 0.9);
+
+struct ContainerStyle {
+    theme: theme::Container,
+    bg_color : Color
+}
+
+impl ContainerStyle{
+    pub fn new(theme: theme::Container, bg_color: Color) -> Self {
+        Self { theme, bg_color }
+    }
+}
+
+impl container::StyleSheet for ContainerStyle{
+    type Style = Theme;
+    fn appearance(&self, style: &Self::Style) -> container::Appearance {
+        let mut appearance = style.appearance(&self.theme);
+        appearance.background = self.bg_color.into();
+
+        appearance
+    }
+}
 
 
 struct ProgressBarStyle {
@@ -85,19 +110,20 @@ impl button::StyleSheet for ButtonStyle {
 pub fn circular_floating_button_style() -> iced::theme::Button {
     theme::Button::Custom(Box::new(
         ButtonStyle::new( theme::Button::Primary, 
-                    25.0,
-                    Color::from_rgb(0.1, 0.5, 0.9),
-                    Color::from_rgb(0.2, 0.6, 1.0),
-                    Color::from_rgb(0.0, 0.3, 0.7)
+                    100.0,
+                    GREEN_COLOR_MAIN,
+                    Color::from_rgb(0.0, 0.85, 0.35),
+                    Color::from_rgb(0.0, 0.7, 0.35)
         )
     ))
 }
 
-pub fn play_button_style() -> iced::theme::Button {
+
+pub fn play_submit_button_style() -> iced::theme::Button {
    theme::Button::Custom(Box::new(ButtonStyle::new(
     theme::Button::Primary,
     5.0,
-    Color::from_rgb(0.1, 0.5, 0.9),
+    BLUE_COLOR_MAIN,
     Color::from_rgb(0.2, 0.6, 1.0),
     Color::from_rgb(0.0, 0.3, 0.7),
     )))
@@ -142,6 +168,13 @@ pub fn done_pb_style() -> iced::theme::ProgressBar{
    theme::ProgressBar::Custom(Box::new(ProgressBarStyle::new(
     theme::ProgressBar::Primary,
     colors::SUCCESS
+    )))
+}
+
+pub fn white_container_style() -> iced::theme::Container{
+   theme::Container::Custom(Box::new(ContainerStyle::new(
+    theme::Container::Box,
+    Color::WHITE
     )))
 }
 

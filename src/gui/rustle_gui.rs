@@ -3,6 +3,8 @@ use std::sync::Arc;
 
 use crate::download_utils::downloader::{RustleDownloader, ResponseHeaderInfo, PartDownloadInfo, DownloadStatus};
 
+use iced::Color;
+use iced::widget::container::{StyleSheet, self};
 use iced::widget::{ProgressBar, Text, Button, Container, Column, Row, TextInput, Scrollable};
 use iced::{theme, 
         Alignment,
@@ -11,10 +13,12 @@ use iced::{theme,
         Length, 
         Command, 
         Theme, 
-        alignment::Horizontal
+        alignment::Horizontal,
+        alignment::Vertical
         };
 
 use iced_aw::floating_element::Anchor;
+use iced_aw::style::colors::GREEN;
 use iced_aw::{Badge, Icon, ICON_FONT, FloatingElement, Modal, Card, Spinner};
 use iced_aw::style::BadgeStyles;
 use super::utils::format_file_size;
@@ -354,13 +358,13 @@ impl Application for RustleGUI {
                     .push(
                         match row.download_status {
                             DownloadStatus::Paused => {
-                                Button::new(Text::new(Icon::Play.to_string()).font(ICON_FONT)).on_press(Message::ResumeDownloadButtonPressed(*key)).style(play_button_style())
+                                Button::new(Text::new(Icon::Play.to_string()).font(ICON_FONT)).on_press(Message::ResumeDownloadButtonPressed(*key)).style(play_submit_button_style())
                             },
                             DownloadStatus::Idle => {
-                                Button::new(Text::new(Icon::Play.to_string()).font(ICON_FONT)).on_press(Message::StartDownloadButtonPressed(*key)).style(play_button_style())
+                                Button::new(Text::new(Icon::Play.to_string()).font(ICON_FONT)).on_press(Message::StartDownloadButtonPressed(*key)).style(play_submit_button_style())
                             },
                             _ => {
-                                Button::new(Text::new(Icon::Play.to_string()).font(ICON_FONT)).style(play_button_style())
+                                Button::new(Text::new(Icon::Play.to_string()).font(ICON_FONT)).style(play_submit_button_style())
                             }
                         }
                     
@@ -388,13 +392,43 @@ impl Application for RustleGUI {
                                                                         .height(Length::Fill)
                                                                         .width(Length::Fill);
 
+        let initial_info_container = Container::new(
+            Row::new()
+            .push(
+                Text::new(Icon::Info.to_string()).font(ICON_FONT).size(22).style(theme::Text::Color(Color::from_rgba(0.5, 0.5, 0.5, 0.6)))
+            ).push(
+                Text::new("Add downloads using the floating button").size(22).style(theme::Text::Color(Color::from_rgba(0.5, 0.5, 0.5, 0.6)))
+            ).spacing(3)
+        ).width(Length::Fill)
+        .height(Length::Fill)
+        .center_x()
+        .center_y();
+
+
         let main_column = Column::new()
-                            .push(Text::new("Downloads").size(50))
                             .push(
-                            Text::new(".......................")
+                            Row::new().push(
+                                Text::new("Downloads").size(50).style(theme::Text::Color(GREEN_COLOR_MAIN)) 
+                            ).push(
+                                Text::new(Icon::FileEarmarkArrowDown.to_string()).font(ICON_FONT).size(50).style(theme::Text::Color(GREEN_COLOR_MAIN))
+                            ).spacing(15)
+                            
+                            )
+                            .push(
+                            Text::new("----------------------------------------------------------------").style(theme::Text::Color(GREEN_COLOR_MAIN))
                                 .width(Length::Fill)
                             )
-                            .push(scrollable_content)
+                            .push(
+                                match self.downloads.is_empty() {
+                                    true => {
+                                        initial_info_container
+                                    },
+                                    false=> {
+                                        Container::new(scrollable_content) 
+                                    }
+                                }
+                            
+                            )
                             .spacing(10)
                             .padding(10);
 
@@ -402,7 +436,7 @@ impl Application for RustleGUI {
         Container::new(main_column)
                         .width(Length::Fill)
                         .height(Length::Fill)
-                        .style(theme::Container::Box),
+                        .style(white_container_style()),
                     || {
                         Button::new(
                             Text::new(Icon::Plus.to_string())
@@ -468,6 +502,7 @@ impl Application for RustleGUI {
                                         Button::new(
                                             Text::new("Cancel").horizontal_alignment(Horizontal::Center),
                                         )
+                                        .style(cancel_button_style())
                                         .width(Length::Fill)
                                         .on_press(Message::ModalCancelButtonPressed),
                                     )
@@ -475,6 +510,7 @@ impl Application for RustleGUI {
                                         Button::new(
                                             Text::new("Submit").horizontal_alignment(Horizontal::Center),
                                         )
+                                        .style(play_submit_button_style())
                                         .width(Length::Fill)
                                         .on_press(Message::ModalSubmitButtonPressed),
                                     ),

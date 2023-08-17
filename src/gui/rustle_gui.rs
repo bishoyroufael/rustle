@@ -4,8 +4,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use crate::download_utils::downloader::{RustleDownloader, ResponseHeaderInfo, PartDownloadInfo, DownloadStatus};
-use iced::Color;
-use iced::widget::{ProgressBar, Text, Button, Container, Column, Row, TextInput, Scrollable};
+use iced::widget::{Text,Container, Column, Row, TextInput, Scrollable};
 use iced::{theme, 
         Alignment,
         Element,
@@ -17,7 +16,7 @@ use iced::{theme,
         };
 
 use iced_aw::floating_element::Anchor;
-use iced_aw::{Badge, Icon, ICON_FONT, FloatingElement, Modal, Card, Spinner};
+use iced_aw::{FloatingElement, Modal, Card, Spinner};
 use iced_aw::style::BadgeStyles;
 use super::utils::format_file_size;
 use super::styles::*;
@@ -524,7 +523,7 @@ impl Application for RustleGUI {
                             Row::new().push(
                                 Text::new("Downloads").size(50).style(theme::Text::Color(GREEN_COLOR_MAIN)) 
                             ).push(
-                                Text::new(Icon::FileEarmarkArrowDown.to_string()).font(ICON_FONT).size(50).style(theme::Text::Color(GREEN_COLOR_MAIN))
+                                file_download_icon().size(50).style(theme::Text::Color(GREEN_COLOR_MAIN))
                             ).spacing(15)
                             
                             )
@@ -614,20 +613,12 @@ impl Application for RustleGUI {
                                     .padding(5)
                                     .width(Length::Fill)
                                     .push(
-                                        Button::new(
-                                            Text::new("Cancel").horizontal_alignment(Horizontal::Center),
-                                        )
-                                        .style(cancel_button_style())
+                                        button(Text::new("Cancel").horizontal_alignment(Horizontal::Center), Some(Message::ModalCancelButtonPressed), cancel_button_style())
                                         .width(Length::Fill)
-                                        .on_press(Message::ModalCancelButtonPressed),
                                     )
                                     .push(
-                                        Button::new(
-                                            Text::new("Submit").horizontal_alignment(Horizontal::Center),
-                                        )
-                                        .style(play_submit_button_style())
+                                        button(Text::new("Submit").horizontal_alignment(Horizontal::Center), Some(Message::ModalSubmitButtonPressed), play_submit_button_style())
                                         .width(Length::Fill)
-                                        .on_press(Message::ModalSubmitButtonPressed),
                                     ),
                             ).max_width(450.0)
                             .into()

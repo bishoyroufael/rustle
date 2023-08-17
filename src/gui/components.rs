@@ -3,6 +3,12 @@ use iced::widget::{Text, ProgressBar, Button};
 use iced_aw::{Badge, style::BadgeStyles, Icon, ICON_FONT};
 use super::rustle_gui::Message;
 
+
+/// Returns a `Text` widget displaying a file download icon.
+pub fn file_download_icon() -> Text<'static> {
+    Text::new(Icon::FileEarmarkArrowDown.to_string()).font(ICON_FONT).into()
+}
+
 /// Returns a `Text` widget displaying a plus icon.
 pub fn plus_icon() -> Text<'static> {
     Text::new(Icon::Plus.to_string()).font(ICON_FONT).into()

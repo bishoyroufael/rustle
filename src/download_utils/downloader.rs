@@ -5,80 +5,89 @@ use tokio::task::JoinHandle;
 use tokio::task;
 use reqwest::{header::{HeaderValue, RANGE, CONTENT_DISPOSITION, ACCEPT_RANGES, CONTENT_LENGTH, CONTENT_TYPE}, StatusCode};
 use url::Url;
-use std::{str::FromStr, default, time::Duration};
+use std::{str::FromStr, time::Duration};
 use std::path::PathBuf;
 use tokio::sync::Mutex;
 use std::sync::Arc;
 use super::io::write_bytes_to_file_in_dir;
 use std::time::Instant;
 
-
+/// Represents the level of support for partial requests.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum SupportPartialRequest {
+    /// Indicates that partial requests are supported.
     Yes,
+    /// Indicates that partial requests are not supported.
     No,
+    /// Indicates an unknown level of support for partial requests.
     #[default]
     Unknown
 }
 
+/// A wrapper struct for a valid URL.
+/// It provides a convenient way to create and access a URL.
 #[derive(Debug, Clone)]
 pub struct ValidUrl(Url);
 
 impl ValidUrl {
+    /// Creates a new ValidUrl instance from a string representation of a URL.
+    /// Returns Ok with the ValidUrl if the URL is valid, or a ParseError if it's not.
+    ///
+    /// # Arguments
+    ///
+    /// * `url` - A string slice representing a URL.
     pub fn new(url: &str) -> Result<Self, url::ParseError> {
         let parsed_url = Url::from_str(url)?;
         Ok(ValidUrl(parsed_url))
     }
 
+    /// Returns the string representation of the URL.
     pub fn as_str(&self) -> &str {
         self.0.as_str()
     }
 }
 
+
+/// ResponseHeaderInfo represents the header information received in response to a request.
 #[derive(Debug, Default, Clone)]
 pub struct ResponseHeaderInfo {
-    pub support_partial : SupportPartialRequest,
-    pub content_length : Option<u64>,
-    pub content_type : Option<String>,
-    pub file_name : Option<String>,
+    pub support_partial: SupportPartialRequest,   // Indicates whether partial downloading is supported
+    pub content_length: Option<u64>,              // Length of the content in bytes
+    pub content_type: Option<String>,             // MIME type of the content
+    pub file_name: Option<String>,                // Name of the file
 }
 
+/// PartDownloadInfo represents information about a downloaded part of a file.
 #[derive(Debug, Clone, Copy)]
 pub struct PartDownloadInfo {
-    pub downloaded_bytes : usize,
-    pub download_speed : f64
+    pub downloaded_bytes: usize,  // Number of bytes downloaded for this part
+    pub download_speed: f64,      // Download speed in bytes per second for this part
 }
 
+/// RustleDownloaderInner represents the internal state of the RustleDownloader.
 #[derive(Debug, Default)]
-// https://stackoverflow.com/questions/76137948/using-mut-self-in-an-async-move-block
-struct  RustleDownloaderInner {
-    // Url for downloading
-    pub url : Option<ValidUrl>,
-    // Output directory
-    pub out_dir : Option<PathBuf>,
-    // Num parallel connections if partial downloading is allowed
-    pub max_parallel_connections : u8,
-    // Header information to infer details about the file 
-    get_headers_info : Option<ResponseHeaderInfo>,
-    // Progress bar
-    progress_bar : Option<indicatif::ProgressBar>,
-    // Vector containing (bytes, speed) per part
-    progress_vec : Vec<PartDownloadInfo>,
-
-    // Downloading status
-    download_status: DownloadStatus
+struct RustleDownloaderInner {
+    pub url: Option<ValidUrl>,                    // URL for downloading
+    pub out_dir: Option<PathBuf>,                 // Output directory for downloaded files
+    pub max_parallel_connections: u8,             // Number of parallel connections allowed for partial downloading
+    pub get_headers_info: Option<ResponseHeaderInfo>,  // Header information received in response to a request
+    pub progress_bar: Option<indicatif::ProgressBar>,   // Progress bar for tracking download progress
+    pub progress_vec: Vec<PartDownloadInfo>,      // Vector containing information about downloaded parts
+    pub download_status: DownloadStatus,          // Current download status
 }
 
+/// DownloadStatus represents the status of a download.
 #[derive(Default, Debug, Clone, Copy)]
 pub enum DownloadStatus {
     #[default]
-    Idle,
-    Downloading,
-    Paused,
-    Done,
-    Error
+    Idle,       // Download is idle
+    Downloading,    // Download is in progress
+    Paused,     // Download is paused
+    Done,       // Download is completed
+    Error,      // Download encountered an error
 }
 
+/// RustleDownloader represents a downloader tool for downloading files.
 #[derive(Debug, Clone, Default)]
 pub struct RustleDownloader {
     inner: Arc<Mutex<RustleDownloaderInner>>,
@@ -86,7 +95,16 @@ pub struct RustleDownloader {
 
 
 impl RustleDownloader {
-
+    /// Extracts information from the response headers and returns a `Result` containing the extracted information
+    ///
+    /// # Arguments
+    ///
+    /// * `self` - A reference to the `RustleDownloader` struct
+    /// * `response` - A reference to the `reqwest::Response` object
+    ///
+    /// # Returns
+    ///
+    /// * A `Result` containing the extracted `ResponseHeaderInfo` or an error message
     async fn extract_header_info(self: &RustleDownloader, response: &reqwest::Response) -> Result<ResponseHeaderInfo, String> {
 
         let response_headers = response.headers();
@@ -146,6 +164,13 @@ impl RustleDownloader {
 
     }
 
+    /// Initializes the RustleDownloader by performing an initial GET request.
+    /// The response headers should provide information about the support for 
+    /// partial requests and the download file information.
+    ///
+    /// # Returns
+    /// Returns a `Result` indicating whether the initialization was successful (`Ok(true)`)
+    /// or an error message (`Err(String)`).
     pub async fn init(self: &mut RustleDownloader) -> Result<bool, String> {
         /*
             Do an initial GET request
@@ -169,41 +194,69 @@ impl RustleDownloader {
         return Ok(true);
     }
 
+    /// Pauses the RustleDownloader, changing the download status to `Paused`.
     pub async fn pause(self: &RustleDownloader) -> () {
         self.inner.lock().await.download_status = DownloadStatus::Paused;
     }
 
+    /// Resumes the RustleDownloader, changing the download status to `Downloading`.
     pub async fn resume(self: &RustleDownloader) -> () {
         self.inner.lock().await.download_status = DownloadStatus::Downloading;
     }
 
+    /// Retrieves the current download status of the RustleDownloader.
     pub async fn get_status(self: &RustleDownloader) -> DownloadStatus {
         self.inner.lock().await.download_status
     }
 
-    /* Getters */
+    /// Retrieves the file information obtained from the response headers.
+    /// Returns `Some(ResponseHeaderInfo)` if the information is available, otherwise `None`.
     pub async fn get_file_info(self: &RustleDownloader) -> Option<ResponseHeaderInfo>{
         self.inner.lock().await.get_headers_info.clone()
     }
 
+    /// Retrieves a vector of `PartDownloadInfo` representing the progress of each download part.
+    /// This vector contains information such as the start and end range of each part and the number
+    /// of bytes downloaded for each part.
     pub async fn get_progress_vec(self: &RustleDownloader) -> Vec<PartDownloadInfo> {
         self.inner.lock().await.progress_vec.clone()
     }
 
 
     /* Setters */
+    /// Sets the URL for the RustleDownloader.
+    ///
+    /// # Arguments
+    ///
+    /// * `url` - A string slice containing the URL to be set.
+    ///
+    /// Returns an error if the provided URL is invalid.
     pub async fn set_url(self: &mut RustleDownloader, url: &str) -> Result<&RustleDownloader, String> {
         let url = ValidUrl::new(&url).map_err(|e| e.to_string())?;
         self.inner.lock().await.url = Some(url);
         return Ok(self);
     }
 
+    /// Sets the output directory for the RustleDownloader.
+    ///
+    /// # Arguments
+    ///
+    /// * `out_dir` - A string slice containing the path of the output directory.
+    ///
+    /// Returns an error if the provided directory path is invalid.
     pub async fn set_out_dir(self: &mut RustleDownloader, out_dir: &str) -> Result<&RustleDownloader, String> {
         let out_dir = PathBuf::from_str(&out_dir).map_err(|e| e.to_string())?;
         self.inner.lock().await.out_dir = Some(out_dir);
         return Ok(self);
     }
 
+    /// Creates a new instance of RustleDownloader.
+    ///
+    /// # Arguments
+    ///
+    /// * `max_parallel_connections` - The maximum number of parallel connections for downloading.
+    ///
+    /// Returns an error if the maximum number of parallel connections is zero.
     pub fn new (max_parallel_connections : u8) -> Result<RustleDownloader, String>{
         return Ok(
             RustleDownloader 
@@ -221,6 +274,17 @@ impl RustleDownloader {
                 })
     }
 
+    /// Downloads a file asynchronously from a given URL using multiple parallel connections.
+    /// If `with_progress_bar` is `true`, a progress bar will be displayed during the download process.
+    ///
+    /// # Arguments
+    ///
+    /// * `self` - The RustleDownloader object reference.
+    /// * `with_progress_bar` - A boolean value indicating whether to display a progress bar.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<bool, String>` - A Result indicating whether the download was successful or an error occurred.
     pub async fn download(self: &RustleDownloader, with_progress_bar: bool) -> Result<bool, String> {
         {
             let inner = self.inner.lock().await;
@@ -321,6 +385,20 @@ impl RustleDownloader {
 
     }
 
+    /// Downloads a specific part of a file from a given URL asynchronously.
+    /// It uses the `start_byte` and `end_byte` parameters to specify the range of bytes to download.
+    /// The `part_num` parameter is used for tracking progress and updating the progress bar.
+    ///
+    /// # Arguments
+    ///
+    /// * `self` - The RustleDownloader object reference.
+    /// * `start_byte` - The starting byte index for the download range.
+    /// * `end_byte` - The ending byte index for the download range.
+    /// * `part_num` - The index of the part being downloaded.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Bytes, String>` - A Result containing the downloaded bytes or an error message.
     async fn download_part_from_url(self: &RustleDownloader, start_byte: u64, end_byte: u64, part_num: usize) -> Result<Bytes, String> {
         let client = reqwest::Client::new();
         let url = {

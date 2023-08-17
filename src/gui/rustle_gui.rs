@@ -1,10 +1,10 @@
+/*
+    Imports
+*/
 use std::collections::HashMap;
 use std::sync::Arc;
-
 use crate::download_utils::downloader::{RustleDownloader, ResponseHeaderInfo, PartDownloadInfo, DownloadStatus};
-
 use iced::Color;
-use iced::widget::container::{StyleSheet, self};
 use iced::widget::{ProgressBar, Text, Button, Container, Column, Row, TextInput, Scrollable};
 use iced::{theme, 
         Alignment,
@@ -13,42 +13,76 @@ use iced::{theme,
         Length, 
         Command, 
         Theme, 
-        alignment::Horizontal,
-        alignment::Vertical
+        alignment::Horizontal
         };
 
 use iced_aw::floating_element::Anchor;
-use iced_aw::style::colors::GREEN;
 use iced_aw::{Badge, Icon, ICON_FONT, FloatingElement, Modal, Card, Spinner};
 use iced_aw::style::BadgeStyles;
 use super::utils::format_file_size;
 use super::styles::*;
+use super::components::*;
 
+
+/*
+    Struct defining a row content in the GUI downloads list 
+*/
 #[derive(Debug, Clone, Default)]
 struct DownloadRowInfo {
+    /// file url to be downloaded
     file_url  : Option<String>,
+    /// detected file name
     file_name : Option<String>,
+    /// detected file size in bytes 
     file_size : Option<u64>,
+    /// detected file type
     file_type : Option<String>,
+    /// vector storing the downloading progress
     download_progress : Vec<PartDownloadInfo>,
+    /// error message if present
     error : Option<String>,
+    /// engine for downloading the file
     engine : Arc<RustleDownloader>,
+    /// downloading status
     download_status : DownloadStatus
 }
 
+impl DownloadRowInfo {
+    pub fn get_total_download_progress(self: &DownloadRowInfo) -> f32 {
+        (self.download_progress.iter().map(|e| e.downloaded_bytes as f32).sum::<f32>()) 
+                                / (self.file_size.unwrap_or(1) as f32) * 100.0
+    }
+    pub fn get_download_speed_mbs(self: &DownloadRowInfo) -> f32 {
+        (self.download_progress.iter().map(|e| e.download_speed as f32).sum::<f32>()) / 1_000_000.0
+    }
+}
+
+/*
+    Struct defining the GUI
+*/
 #[derive(Debug)]
 pub struct RustleGUI {
+    /// hasmap storing the downloads in the scrollable list
     downloads : HashMap<usize, DownloadRowInfo>,
+    /// flag to show modal
     show_modal : bool,
+    /// modal url string field
     modal_url : String,
+    /// modal url string field
     modal_is_loading : bool,
+    /// counter that acts as the key for the hashmap 
     downloads_counter : usize
 }
 
 
+// Callback types
 type DownloadInitHeadType = Result<(Option<ResponseHeaderInfo>, RustleDownloader), String>;
 type UpdateDownloadType = (Vec<PartDownloadInfo>, DownloadStatus, usize, Arc<RustleDownloader>);
 
+
+/*
+    GUI messages
+*/
 #[derive(Debug, Clone)]
 pub enum Message {
     ActionButtonPressed,
@@ -69,6 +103,20 @@ pub enum Message {
 
 impl RustleGUI {
 
+    /// Updates the download progress and status for a specific row.
+    ///
+    /// # Arguments
+    ///
+    /// * `engine` - A shared Arc reference to the `RustleDownloader` instance.
+    /// * `row_id` - The identifier of the row for which to update the download information.
+    ///
+    /// # Returns
+    ///
+    /// Returns a tuple containing:
+    /// * A vector of download progress.
+    /// * The current download status.
+    /// * The provided `row_id`.
+    /// * A cloned `RustleDownloader` instance.
     pub async fn update_download(engine : Arc<RustleDownloader>, row_id : usize) -> UpdateDownloadType {
 
         ( 
@@ -78,21 +126,63 @@ impl RustleGUI {
         engine.clone()
         )
     }
+
+    /// Starts the download using the provided `RustleDownloader` instance.
+    ///
+    /// # Arguments
+    ///
+    /// * `engine` - A shared Arc reference to the `RustleDownloader` instance.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Result` indicating whether the download was successfully started (`Ok(true)`)
+    /// or an error message (`Err(String)`).
     pub async fn start_download(engine : Arc<RustleDownloader>) -> Result<bool, String>{
         engine.download(false).await
     }
 
-
+    /// Pauses the download using the provided `RustleDownloader` instance and returns the row ID.
+    ///
+    /// # Arguments
+    ///
+    /// * `engine` - A shared Arc reference to the `RustleDownloader` instance.
+    /// * `row_id` - The identifier of the row to pause.
+    ///
+    /// # Returns
+    ///
+    /// Returns the provided `row_id`.
     pub async fn pause_download(engine : Arc<RustleDownloader>, row_id : usize) -> usize {
         engine.pause().await;
         row_id
     }
 
+    /// Resumes the download using the provided `RustleDownloader` instance and returns the row ID.
+    ///
+    /// # Arguments
+    ///
+    /// * `engine` - A shared Arc reference to the `RustleDownloader` instance.
+    /// * `row_id` - The identifier of the row to resume.
+    ///
+    /// # Returns
+    ///
+    /// Returns the provided `row_id`.
     pub async fn resume_download(engine : Arc<RustleDownloader>, row_id : usize) -> usize {
         engine.resume().await;
         row_id
     }
 
+    /// Initializes a download using the provided URL and directory, returning initialization info.
+    ///
+    /// # Arguments
+    ///
+    /// * `url` - The URL to download the file from.
+    /// * `dir` - The directory to save the downloaded file.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Result` containing the initialization info as a tuple:
+    /// * A `DownloadInitHeadType` containing file information.
+    /// * A newly created `RustleDownloader` instance.
     pub async fn init_download(url : String, dir: String) -> DownloadInitHeadType {
         let download_engine = RustleDownloader::new(4);
         match download_engine {
@@ -123,7 +213,17 @@ impl Application for RustleGUI {
     type Executor = iced::executor::Default;
     type Flags = ();
 
-
+    /// Creates a new `RustleGUI` instance along with an initial `Command`.
+    ///
+    /// # Arguments
+    ///
+    /// * `_flags` - A placeholder argument that is not used in this method.
+    ///
+    /// # Returns
+    ///
+    /// Returns a tuple containing:
+    /// * A newly constructed `RustleGUI` instance.
+    /// * An initial `Command` representing no action.
     fn new(_flags: ()) -> (RustleGUI, Command<Message>) {
         (
             Self { 
@@ -137,10 +237,24 @@ impl Application for RustleGUI {
         )
     }
 
+    /// Returns the title of the GUI.
+    ///
+    /// # Returns
+    ///
+    /// Returns the title as a `String`.
     fn title(&self) -> String {
         String::from("Rustle Downloader")
     }
 
+    /// Updates the GUI state based on the received message and returns a `Command`.
+    ///
+    /// # Arguments
+    ///
+    /// * `message` - A message representing a user action or event.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Command` representing an action to be executed.
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::ActionButtonPressed => {
@@ -191,7 +305,7 @@ impl Application for RustleGUI {
                 Command::none()
             },
             Message::StartDownloadCallback(_res) => {
-                // Download is done here
+                // Download callback after it's done
                 Command::none()
             },
             Message::StartDownloadButtonPressed(row_i) => {
@@ -282,105 +396,102 @@ impl Application for RustleGUI {
         }
     }
 
-
+    /// Generates the GUI view based on the current state of `RustleGUI`.
+    ///
+    /// # Returns
+    ///
+    /// Returns an `Element` representing the GUI's user interface.
     fn view(&self) -> Element<Message> {
         /*
             GUI Elements
          */
 
+        // Scrollable content list
         let scrollable_content = self.downloads.iter().fold(
             Column::new()
                 .width(Length::Fill)
                 .height(Length::Shrink)
                 .padding(10),
             |scroll, (key, row)| scroll.push( 
+                // Column containing 2 rows
+                // 1st row contains badges for file info
+                // 2nd row contains progress bar and respective action buttons
                 Column::new().push(
+                    // 1st row
                     Row::new()
-                    .push(Badge::new(Text::new(row.file_name.clone().unwrap_or(String::from("Unknown")))).style(BadgeStyles::Primary))    
-                    .push(Badge::new(Text::new(format_file_size(row.file_size.clone().unwrap_or(0)))).style(BadgeStyles::Secondary))
-                    .push(Badge::new(Text::new(row.file_type.clone().unwrap_or(String::from("Unknown")))).style(BadgeStyles::Info))
+                    .push(badge(row.file_name.clone().unwrap_or(String::from("Unknown")), BadgeStyles::Primary))    
+                    .push(badge(format_file_size(row.file_size.clone().unwrap_or(0)), BadgeStyles::Secondary))
+                    .push(badge(row.file_type.clone().unwrap_or(String::from("Unknown")), BadgeStyles::Info))
                     .spacing(10)
                     .padding(10)
                 ).push(
+                    // 2nd row
                     Row::new()
-                    .push(
+                    .push( // progress bar
                         match row.download_status {
                             DownloadStatus::Paused => {
-                                ProgressBar::new(0.0..=100.0, 
-                                ((row.download_progress.iter().map(|e| e.downloaded_bytes as f32).sum::<f32>()) 
-                                / (row.file_size.unwrap_or(1) as f32)) * 100.0
-                                ).style(paused_pb_style())
+                                progress_bar(row.get_total_download_progress(), paused_pb_style())
                             },
                             DownloadStatus::Downloading => {
-                                ProgressBar::new(0.0..=100.0, 
-                                ((row.download_progress.iter().map(|e| e.downloaded_bytes as f32).sum::<f32>()) 
-                                / (row.file_size.unwrap_or(1) as f32)) * 100.0
-                                ).style(downloading_pb_style())
+                                progress_bar(row.get_total_download_progress(), downloading_pb_style())
                             },
                             DownloadStatus::Done => {
-                                ProgressBar::new(0.0..=100.0, 
-                                ((row.download_progress.iter().map(|e| e.downloaded_bytes as f32).sum::<f32>()) 
-                                / (row.file_size.unwrap_or(1) as f32)) * 100.0
-                                ).style(done_pb_style())
+                                progress_bar(row.get_total_download_progress(),done_pb_style())
                             }
                             _ => {
-                                ProgressBar::new(0.0..=100.0, 
-                                ((row.download_progress.iter().map(|e| e.downloaded_bytes as f32).sum::<f32>()) 
-                                / (row.file_size.unwrap_or(1) as f32)) * 100.0
-                                )
+                                progress_bar(row.get_total_download_progress(), theme::ProgressBar::Danger)
                             }
                         }
-
-                    
                     )
-                    .push(
+                    .push( // badge progress status
                         match row.download_status {
                             DownloadStatus::Done => {
-                                Badge::new(Text::new("Done")).style(BadgeStyles::Success)
+                                badge(String::from("Done"), BadgeStyles::Success)
                             },
                             DownloadStatus::Paused => {
-                                Badge::new(Text::new("Paused")).style(BadgeStyles::Dark)
+                                badge(String::from("Paused"), BadgeStyles::Dark)
                             },
                             DownloadStatus::Error => {
-                                Badge::new(Text::new("Error")).style(BadgeStyles::Danger)
+                                badge(String::from("Error"), BadgeStyles::Danger)
                             },
+                            // Downloading Badge 
                             _ => {
-                                Badge::new(Text::new(
-                                format!(
-                                    "{:.2} MB/s | {:.2} %",
-                                    (row.download_progress.iter().map(|e| e.download_speed as f32).sum::<f32>()) / 1_000_000.0,
-                                    ((row.download_progress.iter().map(|e| e.downloaded_bytes as f32).sum::<f32>()) 
-                                    / (row.file_size.unwrap_or(1) as f32)) * 100.0
-                                ))).style(BadgeStyles::Light) 
+                                badge (
+                                format!("{:.2} MB/s | {:.2} %",
+                                    row.get_download_speed_mbs(),
+                                    row.get_total_download_progress()
+                                ), BadgeStyles::Light)
                             }
                         }
                 ) 
-                    .push(
+                    .push( // play button
                         match row.download_status {
                             DownloadStatus::Paused => {
-                                Button::new(Text::new(Icon::Play.to_string()).font(ICON_FONT)).on_press(Message::ResumeDownloadButtonPressed(*key)).style(play_submit_button_style())
+                                button(play_icon(), Some(Message::ResumeDownloadButtonPressed(*key)), play_submit_button_style())
                             },
                             DownloadStatus::Idle => {
-                                Button::new(Text::new(Icon::Play.to_string()).font(ICON_FONT)).on_press(Message::StartDownloadButtonPressed(*key)).style(play_submit_button_style())
+                                button(play_icon(), Some(Message::StartDownloadButtonPressed(*key)), play_submit_button_style())
                             },
                             _ => {
-                                Button::new(Text::new(Icon::Play.to_string()).font(ICON_FONT)).style(play_submit_button_style())
+                                button(play_icon(), None, play_submit_button_style())
                             }
                         }
                     
                     )
-                    .push(
+                    .push( // pause button
                         match row.download_status {
                             DownloadStatus::Downloading => {
-                                Button::new(Text::new(Icon::Pause.to_string()).font(ICON_FONT)).on_press(Message::PauseDownloadButtonPressed(*key)).style(pause_button_style())
+                                button( pause_icon(), Some(Message::PauseDownloadButtonPressed(*key)), pause_button_style())
                             },
                             _ => {
-                                Button::new(Text::new(Icon::Pause.to_string()).font(ICON_FONT)).style(pause_button_style())
+                                button(pause_icon(), None, pause_button_style())
                             }
                         }
                     
                     )
-                    .push(Button::new(Text::new(Icon::X.to_string()).font(ICON_FONT)).on_press(Message::CancelDownloadButtonPressed(*key)).style(cancel_button_style()))
+                    .push( // cancel button
+                        button(cancel_icon(), Some(Message::CancelDownloadButtonPressed(*key)), cancel_button_style())
+                    )
                     .spacing(10)
                     .padding(10)
                 )
@@ -395,16 +506,19 @@ impl Application for RustleGUI {
         let initial_info_container = Container::new(
             Row::new()
             .push(
-                Text::new(Icon::Info.to_string()).font(ICON_FONT).size(22).style(theme::Text::Color(Color::from_rgba(0.5, 0.5, 0.5, 0.6)))
+                info_icon().size(22).style(grey_color_text_style())
             ).push(
-                Text::new("Add downloads using the floating button").size(22).style(theme::Text::Color(Color::from_rgba(0.5, 0.5, 0.5, 0.6)))
+                Text::new("Add downloads using the floating button").size(22).style(grey_color_text_style())
             ).spacing(3)
         ).width(Length::Fill)
         .height(Length::Fill)
         .center_x()
         .center_y();
 
-
+        
+        // Main column content
+        // If no downloads are added, show info container
+        // otherwise scrollable content
         let main_column = Column::new()
                             .push(
                             Row::new().push(
@@ -432,34 +546,35 @@ impl Application for RustleGUI {
                             .spacing(10)
                             .padding(10);
 
+        // Floating button for adding a download url
         let content = FloatingElement::new(
+                // Main contain under the floating button
         Container::new(main_column)
                         .width(Length::Fill)
                         .height(Length::Fill)
                         .style(white_container_style()),
                     || {
-                        Button::new(
-                            Text::new(Icon::Plus.to_string())
-                            .font(ICON_FONT)
-                            .size(45)
-                    )
-                    .on_press(Message::ActionButtonPressed)
-                    .padding(5)
-                    .style(circular_floating_button_style()).into()
+                        // Floating Button
+                        button(plus_icon().size(45),
+                            Some(Message::ActionButtonPressed),
+                                 circular_floating_button_style()
+                            ).padding(5).into()
                     }
                 )
                 .anchor(Anchor::SouthEast)
                 .offset(20.0)
                 .hide(false);
 
+        // Full container with all elements
         let main_screen_container = Container::new(content)
             .width(Length::Fill)
             .height(Length::Fill)
             .padding(10)
             .center_x()
             .center_y();
-            
-            Modal::new (
+        
+        // Modal that is set to show dynamically
+        Modal::new (
                     self.show_modal,
                     main_screen_container,
                     || {

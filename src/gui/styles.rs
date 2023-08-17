@@ -1,6 +1,5 @@
-use iced::{theme::{self, ProgressBar}, Theme, widget::{button, button::Appearance, progress_bar, container}, Color};
+use iced::{theme::{self}, Theme, widget::{button, button::Appearance, progress_bar, container}, Color};
 use iced_aw::style::colors;
-
 
 pub const GREEN_COLOR_MAIN : Color = Color::from_rgb(0.0, 0.749, 0.388);
 pub const BLUE_COLOR_MAIN : Color = Color::from_rgb(0.1, 0.5, 0.9);
@@ -107,6 +106,11 @@ impl button::StyleSheet for ButtonStyle {
 }
 
 
+/// Returns a custom button style for circular floating buttons.
+///
+/// # Returns
+///
+/// Returns a button style with a circular shape, using main green color for background and gradients for hover effect.
 pub fn circular_floating_button_style() -> iced::theme::Button {
     theme::Button::Custom(Box::new(
         ButtonStyle::new( theme::Button::Primary, 
@@ -118,7 +122,11 @@ pub fn circular_floating_button_style() -> iced::theme::Button {
     ))
 }
 
-
+/// Returns a custom button style for play/submit buttons.
+///
+/// # Returns
+///
+/// Returns a button style with a slightly rounded rectangle shape, using main blue color for background and gradients for hover effect.
 pub fn play_submit_button_style() -> iced::theme::Button {
    theme::Button::Custom(Box::new(ButtonStyle::new(
     theme::Button::Primary,
@@ -129,6 +137,11 @@ pub fn play_submit_button_style() -> iced::theme::Button {
     )))
 } 
 
+/// Returns a custom button style for pause buttons.
+///
+/// # Returns
+///
+/// Returns a button style with a slightly rounded rectangle shape, using a gray color for background and darker shades for hover effect.
 pub fn pause_button_style() -> iced::theme::Button {
    theme::Button::Custom(Box::new(ButtonStyle::new(
     theme::Button::Secondary,
@@ -139,6 +152,11 @@ pub fn pause_button_style() -> iced::theme::Button {
 )))
 } 
 
+/// Returns a custom button style for cancel buttons.
+///
+/// # Returns
+///
+/// Returns a button style with a slightly rounded rectangle shape, using a red color for background and darker shades for hover effect.
 pub fn cancel_button_style() -> iced::theme::Button {
    theme::Button::Custom(Box::new(ButtonStyle::new(
     theme::Button::Destructive,
@@ -149,7 +167,11 @@ pub fn cancel_button_style() -> iced::theme::Button {
     )))
 }
 
-
+/// Returns a custom progress bar style for downloading state.
+///
+/// # Returns
+///
+/// Returns a progress bar style with the primary color transitioning from light to dark blue.
 pub fn downloading_pb_style() -> iced::theme::ProgressBar{
    theme::ProgressBar::Custom(Box::new(ProgressBarStyle::new(
     theme::ProgressBar::Primary,
@@ -157,6 +179,11 @@ pub fn downloading_pb_style() -> iced::theme::ProgressBar{
     )))
 }
 
+/// Returns a custom progress bar style for paused state.
+///
+/// # Returns
+///
+/// Returns a progress bar style with the primary color set to gray.
 pub fn paused_pb_style() -> iced::theme::ProgressBar{
    theme::ProgressBar::Custom(Box::new(ProgressBarStyle::new(
     theme::ProgressBar::Primary,
@@ -164,6 +191,11 @@ pub fn paused_pb_style() -> iced::theme::ProgressBar{
     )))
 }
 
+/// Returns a custom progress bar style for done state.
+///
+/// # Returns
+///
+/// Returns a progress bar style with the primary color set to a success color.
 pub fn done_pb_style() -> iced::theme::ProgressBar{
    theme::ProgressBar::Custom(Box::new(ProgressBarStyle::new(
     theme::ProgressBar::Primary,
@@ -171,10 +203,26 @@ pub fn done_pb_style() -> iced::theme::ProgressBar{
     )))
 }
 
+/// Returns a custom container style with a white background.
+///
+/// # Returns
+///
+/// Returns a container style with a white background color.
 pub fn white_container_style() -> iced::theme::Container{
    theme::Container::Custom(Box::new(ContainerStyle::new(
     theme::Container::Box,
     Color::WHITE
     )))
+}
+
+/// Returns a custom text style with a gray color and reduced opacity.
+///
+/// # Returns
+///
+/// Returns a text style with a gray color and reduced opacity for a subdued appearance.
+pub fn grey_color_text_style() -> theme::Text { 
+    theme::Text::Color(
+        Color::from_rgba(0.5, 0.5, 0.5, 0.6)
+    )
 }
 
